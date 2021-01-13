@@ -3,39 +3,50 @@ v-card(tile, height="100%")
     v-toolbar(dark, color="primary")
         v-toolbar-title 刊登管理
 
-    v-list(two-line, outlined)
-        v-list-group(v-for="({ title, _id }, i) in jobs", :key="i")
-            template(#activator)
-                v-list-item-content.mx-5
-                    v-list-item-title
-                        h3 {{ title }}
-                    v-list-item-subtitle
-                        v-chip.mr-1(
-                            x-small,
-                            color="primary",
-                            :key="i",
-                            v-for="(tag, i) in jobs.tags"
-                        ) {{ tag }}
+    v-list(two-line)
+        template(v-for="({ title, _id, finish }, i) in jobs")
+            v-list-group(:key="i")
+                template(#activator)
+                    v-list-item-content.mx-5
+                        v-list-item-title
+                            h3 {{ title }}
+                        v-list-item-subtitle
+                            v-chip.mr-1(
+                                x-small,
+                                color="primary",
+                                :key="i",
+                                v-for="(tag, i) in jobs.tags"
+                            ) {{ tag }}
 
-            v-divider
+                    v-list-item-avatar(width="70")
+                        v-chip(:color="finish ? 'error' : 'success'") {{ finish ? '已結束' : '招募中' }}
 
-            v-list-item
-                v-list-item-content(align="right")
-                    span
+                v-card(flat)
+                    v-card-actions
+                        v-spacer
                         v-btn.mr-1(
                             outlined,
                             color="error",
                             @click="showDeleteDialog(_id)"
                         ) 刪除
+
                         v-btn.mr-1(
                             outlined,
-                            color="success",
+                            color="secondary",
+                            @click="finishJob(_id)",
+                            v-if="!finish"
+                        ) 結束
+
+                        v-btn.mr-1(
+                            outlined,
+                            color="primary",
                             :to="`/job/${_id}/edit`"
                         ) 修改
+
                         v-btn.mr-1(
                             outlined,
                             color="warning",
-                            @click="selectedItem(_id)"
+                            :to="`/job/${_id}/applicant`"
                         ) 應徵者
 
                         v-dialog(v-model="deleteDialog.show")
@@ -58,21 +69,17 @@ v-card(tile, height="100%")
 
     v-btn(fixed, bottom, right, fab, dark, color="primary", to="/job/new")
         v-icon mdi-plus
-
-    CandidatesDialog(v-model="showCandidates" :applyment="applyments")
 </template>
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator'
 import { namespace } from 'vuex-class'
 import { IAccount } from '@/server/models'
-
-import CandidatesDialog from '@/client/components/CandidatesDialog.vue'
 import { sendMessage } from '../sysmsg'
 
 const Account = namespace('Account')
 
-@Component({ components: { CandidatesDialog } })
+@Component
 export default class extends Vue {
     @Account.State account!: IAccount
     jobs: any[] = []
@@ -83,26 +90,19 @@ export default class extends Vue {
         loading: false
     }
 
-    showCandidates = false
-    showEditor = false
-    applyments = null
-
-    async selectedItem(jobID:any){
-        this.applyments = await axios.get('/api/applyment', { params: { job: jobID }})
-        console.log(this.applyments)
-        if(this.applyments != null){
-            this.showCandidates = true
-        }
-    }
-    
-    toJobPage(id: string) {
-        this.$router.push(`/job/modify/${id}`)
-    }
-
+    applyments: any[] = []
 
     showDeleteDialog(id: string) {
         this.deleteDialog.show = true
         this.deleteDialog.id = id
+    }
+
+    async finishJob(id: string) {
+        let { status } = await axios.post(`/api/job/${id}/finish`)
+        if (status === 200) {
+            let x = this.jobs.find((x) => x._id == id)
+            x.finish = true
+        }
     }
 
     async loadJobs() {
@@ -130,7 +130,7 @@ export default class extends Vue {
         this.loadJobs()
     }
 
-    
+
 }
 </script>
 
