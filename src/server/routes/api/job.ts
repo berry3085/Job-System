@@ -62,43 +62,50 @@ router.get('/search', async (req, res) => {
 
     // all
     let intersection: any[] = []
-    if (titleToSearch && tagNames) {
-        let jobsWithTags = await tags.findJobsByTags(tagNames)
+    if (titleToSearch != '')
+        if (titleToSearch && tagNames) {
+            let jobsWithTags = await tags.findJobsByTags(tagNames)
+            let result = await Job.find({
+                _id: {
+                    $in: jobsWithTags
+                },
+                title: {
+                    $regex: `${titleToSearch}`, $options: "$i"
+                },
+                finish: false
+            })
+            intersection = result//.map((x)=>x._id)
+            let result2 = await Job.find({
+                _id: {
+                    $in: jobsWithTags
+                },
+                finish: false
+            })
+            intersection = intersection.concat(result2.filter((x) => !result.includes(x)))
+        } else if (titleToSearch) {
+            let result = await Job.find({
+                title: {
+                    $regex: `${titleToSearch}`, $options: "$i"
+                },
+                finish: false
+            })
+            intersection = result//.map((x)=>x._id)
+        } else if (tagNames) {
+            let jobsWithTags = await tags.findJobsByTags(tagNames)
+            let result = await Job.find({
+                _id: {
+                    $in: jobsWithTags
+                },
+                finish: false
+            })
+            console.log("jobsWithTags: ", jobsWithTags)
+            intersection = result//.map((x)=>x._id)
+        }
+    else {
         let result = await Job.find({
-            _id: {
-                $in: jobsWithTags
-            },
-            title: {
-                $regex: `${titleToSearch}`, $options: "$i"
-            },
             finish: false
         })
-        intersection = result//.map((x)=>x._id)
-        let result2 = await Job.find({
-            _id: {
-                $in: jobsWithTags
-            },
-            finish: false
-        })
-        intersection = intersection.concat(result2.filter((x) => !result.includes(x)))
-    } else if (titleToSearch) {
-        let result = await Job.find({
-            title: {
-                $regex: `${titleToSearch}`, $options: "$i"
-            },
-            finish: false
-        })
-        intersection = result//.map((x)=>x._id)
-    } else if (tagNames) {
-        let jobsWithTags = await tags.findJobsByTags(tagNames)
-        let result = await Job.find({
-            _id: {
-                $in: jobsWithTags
-            },
-            finish: false
-        })
-        console.log("jobsWithTags: ", jobsWithTags)
-        intersection = result//.map((x)=>x._id)
+        intersection = result
     }
 
     res.status(200).json(intersection);
